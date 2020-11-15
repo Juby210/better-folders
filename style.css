@@ -1,0 +1,54 @@
+/*
+ * Copyright (c) 2020 Juby210 & Lighty
+ * Licensed under the Open Software License version 3.0
+ */
+
+.base-3dtUhz {
+  position: relative;
+  left: 0 !important;
+  width: 100%;
+}
+
+.wrapper-1Rf91z {
+  position: relative;
+}
+
+.container-2lgZY8 {
+  display: flex;
+}
+
+.BF-icon {
+  margin: 0 0 8px 8px;
+  background-color: rgba(248, 247, 255, 0.05);
+  border-radius: 9px;
+  transition: background-color .15s ease-out;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.BF-icon > .folderIconWrapper-226oVY {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.BF-icon > svg {
+  top: unset;
+  left: unset;
+}
+
+.BF-icon.BF-icon-hovered:not(.BF-icon-selected), .BF-icon-selected {
+  background-color: rgba(248, 247, 255, 0.3);
+}
+
+.BF-icon-selected.BF-icon-hovered {
+  background-color: rgba(248, 247, 255, 0.4);
+}
+
+.BF-icon .folder-21wGz3 {
+  background: none;
+}
