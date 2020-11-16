@@ -17,6 +17,10 @@
   display: flex;
 }
 
+.BF-folderSidebar {
+  display: flex;
+}
+
 .BF-icon {
   margin: 0 0 8px 8px;
   background-color: rgba(248, 247, 255, 0.05);
