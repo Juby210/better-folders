@@ -19,76 +19,23 @@ module.exports = class BetterFolders extends Plugin {
         powercord.api.settings.registerSettings(this.entityID, {
             category: this.entityID,
             label: 'Better Folders',
-            render: Settings
+            render: props => React.createElement(Settings, { ...props, repatch: () => this.patch(true) })
         })
         this.loadStylesheet('style.css')
+        this.IconStore = require('./IconStore')
 
-        const classes = {
+        this.classes = {
             ...await getModule(['sidebar', 'guilds']),
             ...await getModule(['expandedFolderIconWrapper', 'folder'])
         }
-        const GuildFolderStore = await getModule(['getSortedGuilds'])
 
-        const Guilds = findInTree(
-            getReactInstance(await waitFor(`.${classes.guilds.split(' ')[0]}`)),
-            e => e?.type?.displayName === 'Guilds',
-            { walkable: ['return'] }
-        ).type
-        const FolderGuilds = await (require('./components/FolderGuilds'))(Guilds)
-        const FolderSideBarWrapper = await (require('./components/FolderSideBarWrapper'))(
-            FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
-
-        const { container } = await getModule(['container', 'downloadProgressCircle'])
-        const AppViewInstance = getOwnerInstance(await waitFor(`.${container.split(' ')[0]}`))
-        inject('better-folders-appview', AppViewInstance.__proto__, 'render', (_, res) => {
-            if (!Array.isArray(res?.props?.children)) return res
-            res.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
-            return res
-        })
-
-        this.IconStore = require('./IconStore')
-        const { int2hex } = await getModule(['int2hex', 'isValidHex'])
-
-        const GuildFolder = (await getModule(m => m?.type?.render && (
-            m.type.render.toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1 ||
-            m.type.__powercordOriginal_render && m.type.__powercordOriginal_render.toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1
-        ))).type
-        inject('better-folders-folder', GuildFolder, 'render', (args, res) => {
-            const folder = findInReactTree(res, e => e?.props && !((e.props.id || '').indexOf('folder-items-')))
-            if (folder) folder.props.expanded = false
-
-            const sets = this.settings.get('folderSettings', {})[args[0].folderId]
-            if ((sets?.icon && sets.icon !== '0' && args[0].expanded) || sets?.closedIcon) {
-                const iconParent = findInReactTree(res, e => e?.children?.type?.displayName === 'FolderIcon')
-                if (iconParent) {
-                    const icon = this.IconStore.icons[sets?.icon || 0]
-                    if (icon) iconParent.children = React.createElement('div', {
-                        className: `${classes.folderIconWrapper} ${classes.expandedFolderIconWrapper}`,
-                        style: {
-                            '--bf-primary-color': int2hex(args[0].folderColor),
-                            '--bf-secondary-color': sets?.secondaryColor || '#ffffff'
-                        }
-                    }, Array.isArray(icon) ? icon[args[0].expanded ? 1 : 0] : icon)
-                }
-            }
-
-            if (this.settings.get('folderNameIsNumber') && (!args[0].folderName || !args[0].folderName.length)) {
-                const idx = GuildFolderStore.guildFolders.filter(f => f.folderId).findIndex(m => m.folderId === args[0].folderId) + 1
-                const tooltipProps = findInReactTree(res, e => e?.text)
-                if (tooltipProps) tooltipProps.text = `${Messages.SERVER_FOLDER_PLACEHOLDER} #${idx}`
-            }
-            return res
-        })
-        // let other plugins find module easier
-        const oString = GuildFolder.__powercordOriginal_render.toString()
-        GuildFolder.render.toString = () => oString
-
-        AppViewInstance.forceUpdate()
+        this.patch() // patch AppView and/or GuildFolder
 
         this.components.IconSelectorIcon = await (require('./components/IconSelectorIcon'))(this.IconStore)
         this.components.IconSelector = (require('./components/IconSelector'))(this.IconStore, this.components.IconSelectorIcon)
         this.patchFolderSettings()
 
+        const GuildFolderStore = await getModule(['getSortedGuilds'])
         const ExpandedFolderStore = await getModule(['getExpandedFolders'])
         const { toggleGuildFolderExpand } = await getModule(['move', 'toggleGuildFolderExpand'])
         const getGuildFolderIdx = id => GuildFolderStore.guildFolders.findIndex(e => e.guildIds.indexOf(id) !== -1)
@@ -145,6 +92,109 @@ module.exports = class BetterFolders extends Plugin {
 
         const { container } = await getModule(['container', 'downloadProgressCircle'])
         forceUpdateElement(`.${container.split(' ')[0]}`, true)
+    }
+
+    async getAppViewInstance() {
+        const { container } = await getModule(['container', 'downloadProgressCircle'])
+        return getOwnerInstance(await waitFor(`.${container.split(' ')[0]}`))
+    }
+
+    async patch(repatch) {
+        if (repatch) {
+            uninject('better-folders-appview')
+            uninject('better-folders-folder')
+        }
+        if (this.settings.get('folderSidebar', true)) this.patchAppView()
+        else {
+            await this.patchFolder()
+            if (repatch) (await this.getAppViewInstance()).forceUpdate()
+        }
+    }
+
+    async patchAppView() {
+        const Guilds = findInTree(
+            getReactInstance(await waitFor(`.${this.classes.guilds.split(' ')[0]}`)),
+            e => e?.type?.displayName === 'Guilds',
+            { walkable: ['return'] }
+        ).type
+        const FolderGuilds = await (require('./components/FolderGuilds'))(Guilds)
+        const FolderSideBarWrapper = await (require('./components/FolderSideBarWrapper'))(
+            FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
+
+        const AppViewInstance = await this.getAppViewInstance()
+        inject('better-folders-appview', AppViewInstance.__proto__, 'render', (_, res) => {
+            if (!Array.isArray(res?.props?.children)) return res
+            res.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
+            return res
+        })
+
+        await this.patchFolder(true)
+        AppViewInstance.forceUpdate()
+    }
+
+    async patchFolder(sidebar) {
+        const GuildFolderStore = await getModule(['getSortedGuilds'])
+        const { int2hex } = await getModule(['int2hex', 'isValidHex'])
+
+        const GuildFolder = (await getModule(m => m?.type?.render && (
+            m.type.render.toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1 ||
+            m.type.__powercordOriginal_render && m.type.__powercordOriginal_render.toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1
+        ))).type
+        inject('better-folders-folder', GuildFolder, 'render', (args, res) => {
+            if (sidebar) {
+                const folder = findInReactTree(res, e => e?.props && !(e.props.id || '').indexOf('folder-items-'))
+                if (folder) folder.props.expanded = false
+            }
+
+            const sets = this.settings.get('folderSettings', {})[args[0].folderId]
+            if ((sets?.icon && sets.icon !== '0' && args[0].expanded) || sets?.closedIcon) {
+                const iconParent = findInReactTree(res, e => e?.children?.type?.displayName === 'FolderIcon')
+                if (iconParent) {
+                    const icon = this.IconStore.icons[sets?.icon || 0]
+                    if (icon) iconParent.children = React.createElement('div', {
+                        className: `${this.classes.folderIconWrapper} ${this.classes.expandedFolderIconWrapper}`,
+                        style: {
+                            '--bf-primary-color': int2hex(args[0].folderColor),
+                            '--bf-secondary-color': sets?.secondaryColor || '#ffffff'
+                        }
+                    }, Array.isArray(icon) ? icon[args[0].expanded ? 1 : 0] : icon)
+                }
+            }
+
+            if (this.settings.get('folderNameIsNumber') && (!args[0].folderName || !args[0].folderName.length)) {
+                const idx = GuildFolderStore.guildFolders.filter(f => f.folderId).findIndex(m => m.folderId === args[0].folderId) + 1
+                const tooltipProps = findInReactTree(res, e => e?.text)
+                if (tooltipProps) tooltipProps.text = `${Messages.SERVER_FOLDER_PLACEHOLDER} #${idx}`
+            }
+            return res
+        })
+        // let other plugins find module easier
+        const oString = GuildFolder.__powercordOriginal_render.toString()
+        GuildFolder.render.toString = () => oString
+
+        this.forceUpdateFolder()
+    }
+
+    forceUpdateFolder(id) { // if id is empty just updates all folders
+        try {
+            let instances = [ ...document.querySelectorAll('.' + this.classes.wrapper) ].map(e => getOwnerInstance(e))
+            if (id) instances = instances.filter(i => i.props.childProps.folderId === id)
+            instances.forEach(instance => {
+                const rand = Math.random()
+                inject(`better-folders-folder-temp${rand}`, instance, 'render', function (_, res) {
+                    if (!res?.props) return res
+                    uninject(`better-folders-folder-temp${rand}`)
+                    res.key = rand
+                    const oRef = res.props.setFolderRef
+                    res.props.setFolderRef = (...args) => {
+                        this.forceUpdate()
+                        return oRef(...args)
+                    }
+                    return res
+                })
+                instance.forceUpdate()
+            })
+        } catch (e) {}
     }
 
     async patchFolderSettings() {
@@ -210,6 +260,12 @@ module.exports = class BetterFolders extends Plugin {
                     }, 'Use a closed Icon instead of the Mini-Servers')
                 )
             )
+            const { onClose } = this.props
+            this.props.onClose = () => {
+                _this.forceUpdateFolder(fId)
+                return onClose()
+            }
+
             return res
         })
     }

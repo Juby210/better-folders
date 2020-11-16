@@ -7,7 +7,7 @@ const { React, getModuleByDisplayName } = require('powercord/webpack')
 const { SwitchItem } = require('powercord/components/settings')
 const FormItem = getModuleByDisplayName('FormItem', false)
 
-module.exports = ({ getSetting, toggleSetting }) => <>
+module.exports = ({ getSetting, toggleSetting, repatch }) => <>
     <FormItem style={{ marginBottom: '20px' }} title='Animations'>
         <SwitchItem
             value={getSetting('sidebarAnim', true)}
@@ -15,6 +15,13 @@ module.exports = ({ getSetting, toggleSetting }) => <>
         >Folder sidebar animation</SwitchItem>
     </FormItem>
     <FormItem title='Behavior'>
+        <SwitchItem
+            value={getSetting('folderSidebar', true)}
+            onChange={() => {
+                toggleSetting('folderSidebar', true)
+                repatch()
+            }}
+        >Display servers from folder on dedicated sidebar</SwitchItem>
         <SwitchItem
             value={getSetting('closeAllFolders')}
             onChange={() => toggleSetting('closeAllFolders')}
