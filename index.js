@@ -5,7 +5,6 @@
 
 const { Plugin } = require('powercord/entities')
 const { getModule, getModuleByDisplayName, i18n: { Messages }, React, FluxDispatcher } = require('powercord/webpack')
-const { ColorPicker } = require('powercord/components')
 const { SwitchItem } = require('powercord/components/settings')
 const { findInTree, findInReactTree, forceUpdateElement, getReactInstance, getOwnerInstance, waitFor } = require('powercord/util')
 const { inject, uninject } = require('powercord/injector')
@@ -136,10 +135,9 @@ module.exports = class BetterFolders extends Plugin {
         const GuildFolderStore = await getModule(['getSortedGuilds'])
         const { int2hex } = await getModule(['int2hex', 'isValidHex'])
 
-        const GuildFolder = (await getModule(m => m?.type?.render && (
-            m.type.render.toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1 ||
-            m.type.__powercordOriginal_render && m.type.__powercordOriginal_render.toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1
-        ))).type
+        const GuildFolder = (await getModule(m => m?.type?.render &&
+            (m.type.__powercordOriginal_render || m.type.render).toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1
+        )).type
         inject('better-folders-folder', GuildFolder, 'render', (args, res) => {
             if (sidebar) {
                 const folder = findInReactTree(res, e => e?.props && !(e.props.id || '').indexOf('folder-items-'))
@@ -223,11 +221,12 @@ module.exports = class BetterFolders extends Plugin {
             }
 
             res.props.size = 'big'
-            form.props.children[1].props.children.props.colors = colors
+            const colorPicker = findInReactTree(form, e => e?.props?.colors)
+            if (colorPicker) colorPicker.props.colors = colors
             form.props.children.push(
                 React.createElement(
                     FormItem, { className: classes.marginBottom20, title: 'Secondary Folder Color' },
-                    React.createElement(ColorPicker, {
+                    React.createElement(colorPicker?.type || (() => null), {
                         defaultColor: 16777215, // white
                         colors,
                         value: this.state.secondaryColor,
