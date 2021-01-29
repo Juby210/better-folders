@@ -82,6 +82,7 @@ module.exports = class BetterFolders extends Plugin {
     async pluginWillUnload() {
         powercord.api.settings.unregisterSettings(this.entityID)
         uninject('better-folders-appview')
+        uninject('better-folders-appview2')
         uninject('better-folders-folder')
         uninject('better-folders-foldersettings')
         uninject('better-folders-homebtn')
@@ -101,6 +102,7 @@ module.exports = class BetterFolders extends Plugin {
     async patch(repatch) {
         if (repatch) {
             uninject('better-folders-appview')
+            uninject('better-folders-appview2')
             uninject('better-folders-folder')
         }
         if (this.settings.get('folderSidebar', true)) this.patchAppView()
@@ -121,9 +123,18 @@ module.exports = class BetterFolders extends Plugin {
             FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
 
         const AppViewInstance = await this.getAppViewInstance()
-        inject('better-folders-appview', AppViewInstance.__proto__, 'render', (_, res) => {
-            if (!Array.isArray(res?.props?.children)) return res
-            res.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
+        inject('better-folders-appview2', AppViewInstance.__proto__, 'render', (_, res) => {
+            if (!res?.props?.children?.type || res.props.children.type.displayName !== 'AppView') return res
+
+            inject('better-folders-appview', res.props.children, 'type', (args, res) => {
+                if (!Array.isArray(res?.props?.children)) return res
+                res.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
+                return res
+            })
+            res.props.children.type.displayName = 'AppView'
+            res.props.children.key = Math.random()
+
+            uninject('better-folders-appview2')
             return res
         })
 
