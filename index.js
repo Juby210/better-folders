@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2020 Juby210 & Lighty
+ * Copyright (c) 2020-2021 Juby210 & Lighty
  * Licensed under the Open Software License version 3.0
  */
 
 const { Plugin } = require('powercord/entities')
 const { getModule, getModuleByDisplayName, i18n: { Messages }, React, FluxDispatcher } = require('powercord/webpack')
 const { SwitchItem } = require('powercord/components/settings')
-const { findInTree, findInReactTree, forceUpdateElement, getReactInstance, getOwnerInstance, waitFor } = require('powercord/util')
+const { findInTree, findInReactTree, forceUpdateElement, getReactInstance, getOwnerInstance, sleep, waitFor } = require('powercord/util')
 const { inject, uninject } = require('powercord/injector')
 
 const Settings = require('./components/Settings')
@@ -82,7 +82,6 @@ module.exports = class BetterFolders extends Plugin {
     async pluginWillUnload() {
         powercord.api.settings.unregisterSettings(this.entityID)
         uninject('better-folders-appview')
-        uninject('better-folders-appview2')
         uninject('better-folders-folder')
         uninject('better-folders-foldersettings')
         uninject('better-folders-homebtn')
@@ -102,7 +101,6 @@ module.exports = class BetterFolders extends Plugin {
     async patch(repatch) {
         if (repatch) {
             uninject('better-folders-appview')
-            uninject('better-folders-appview2')
             uninject('better-folders-folder')
         }
         if (this.settings.get('folderSidebar', true)) this.patchAppView()
@@ -113,6 +111,12 @@ module.exports = class BetterFolders extends Plugin {
     }
 
     async patchAppView() {
+        const AppViewInstance = await this.getAppViewInstance()
+        if (powercord.pluginManager.isEnabled('pc-notices') && powercord.pluginManager.get('pc-notices')) {
+            while (!AppViewInstance.props.children.__powercordOriginal_type)
+                await sleep(1)
+        }
+
         const Guilds = findInTree(
             getReactInstance(await waitFor(`.${this.classes.guilds.split(' ')[0]}`)),
             e => e?.type?.displayName === 'Guilds',
@@ -122,21 +126,13 @@ module.exports = class BetterFolders extends Plugin {
         const FolderSideBarWrapper = await (require('./components/FolderSideBarWrapper'))(
             FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
 
-        const AppViewInstance = await this.getAppViewInstance()
-        inject('better-folders-appview2', AppViewInstance.__proto__, 'render', (_, res) => {
-            if (!res?.props?.children?.type || res.props.children.type.displayName !== 'AppView') return res
-
-            inject('better-folders-appview', res.props.children, 'type', (args, res) => {
-                if (!Array.isArray(res?.props?.children)) return res
-                res.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
-                return res
-            })
-            res.props.children.type.displayName = 'AppView'
-            res.props.children.key = Math.random()
-
-            uninject('better-folders-appview2')
+        inject('better-folders-appview', AppViewInstance.props.children, 'type', (_, res) => {
+            if (!Array.isArray(res?.props?.children)) return res
+            res.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
             return res
         })
+        AppViewInstance.props.children.type.displayName = 'AppView'
+        AppViewInstance.props.children.key = Math.random()
 
         await this.patchFolder(true)
         AppViewInstance.forceUpdate()
