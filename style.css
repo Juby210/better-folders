@@ -20,7 +20,16 @@
 .BF-folderSidebar {
   display: flex;
 }
+/*
+.macButtons-2MuSAC.navIsOpen {
+  width: 200% !important;
+  padding-right: calc(100% + 10px);
+}
 
+.BF-folderSidebar .wrapper-3NnKdC {
+  margin-top: 0;
+}
+*/
 .BF-icon {
   margin: 0 0 8px 8px;
   background-color: rgba(248, 247, 255, 0.05);
