@@ -20,6 +20,10 @@
 .BF-folderSidebar {
   display: flex;
 }
+.BF-folderSidebar.hidden-3dXt4k {
+  width: 0 !important;
+  visibility: hidden;
+}
 
 .BF-icon {
   margin: 0 0 8px 8px;

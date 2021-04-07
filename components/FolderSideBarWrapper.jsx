@@ -6,7 +6,10 @@
 const { React, getModule, Flux, FluxDispatcher } = require('powercord/webpack')
 
 module.exports = async (FolderGuilds, warn, getSetting) => {
-    const classes = await getModule(['sidebar', 'guilds'])
+    const classes = {
+        ...await getModule(['sidebar', 'guilds']),
+        ...await getModule(['hidden', 'tree'])
+    }
     const AnimateModule = await getModule(['useTransition'])
     const GuildFolderStore = await getModule(['getSortedGuilds'])
     const ExpandedFolderStore = await getModule(['getExpandedFolders'])
@@ -14,23 +17,31 @@ module.exports = async (FolderGuilds, warn, getSetting) => {
     class FolderSideBarWrapper extends React.PureComponent {
         constructor(props) {
             super(props)
+
+            this.state = {}
             this.onToggleFolderExpand = this.onToggleFolderExpand.bind(this)
-            this.moveguild = this.moveguild.bind(this)
+            this.moveGuild = this.moveGuild.bind(this)
+            this.onToggleFullScreen = this.onToggleFullScreen.bind(this)
         }
         componentDidMount() {
             FluxDispatcher.subscribe('TOGGLE_GUILD_FOLDER_EXPAND', this.onToggleFolderExpand)
-            FluxDispatcher.subscribe('GUILD_MOVE', this.moveguild)
+            FluxDispatcher.subscribe('GUILD_MOVE', this.moveGuild)
+            FluxDispatcher.subscribe('CHANNEL_RTC_UPDATE_LAYOUT', this.onToggleFullScreen)
             this.onToggleFolderExpand()
         }
         componentWillUnmount() {
             FluxDispatcher.unsubscribe('TOGGLE_GUILD_FOLDER_EXPAND', this.onToggleFolderExpand)
-            FluxDispatcher.unsubscribe('GUILD_MOVE', this.moveguild)
+            FluxDispatcher.unsubscribe('GUILD_MOVE', this.moveGuild)
+            FluxDispatcher.unsubscribe('CHANNEL_RTC_UPDATE_LAYOUT', this.onToggleFullScreen)
         }
-        moveguild() {
+        moveGuild() {
             this.forceUpdate()
         }
         onToggleFolderExpand() {
             this.forceUpdate()
+        }
+        onToggleFullScreen({ layout }) {
+            this.setState({ fullscreen: layout === 'full-screen' })
         }
         render() {
             const guilds = document.querySelector(`.${classes.guilds.split(' ')[0]}`)
@@ -57,7 +68,7 @@ module.exports = async (FolderGuilds, warn, getSetting) => {
                 leave={{ width: 0 }}
                 config={{ duration: 200 }}
             >
-                {(props, show) => show && <AnimateModule.animated.div style={props} className='BF-folderSidebar'>{Sidebar}</AnimateModule.animated.div>}
+                {(props, show) => show && <AnimateModule.animated.div style={props} className={`BF-folderSidebar ${this.state.fullscreen ? classes.hidden : ''}`}>{Sidebar}</AnimateModule.animated.div>}
             </AnimateModule.Transition>
         }
     }
