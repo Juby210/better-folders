@@ -53,7 +53,7 @@ module.exports = async (FolderGuilds, warn, getSetting) => {
                     })
                 )
             })
-            const Sidebar = <FolderGuilds guildFolders={guildFolders} isFolder={true} className={classes.guilds} />
+            const Sidebar = <FolderGuilds guildFolders={guildFolders} isFolder={true} className={classes.guilds} lurkingGuildIds={[]} />
             const visible = !!ExpandedFolderStore.getExpandedFolders().size
             if (!getSetting('sidebarAnim', true)) return visible ? <div className={'BF-folderSidebar'}>{Sidebar}</div> : null
             return <AnimateModule.Transition
