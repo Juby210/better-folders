@@ -12,8 +12,16 @@ module.exports = async Guilds => {
     const getGuildFolderIdx = id => GuildFolderStore.guildFolders.findIndex(e => e.guildIds.indexOf(id) !== -1)
 
     const { useDrop } = await getModule(['DropTarget', 'useDrop'])
-    const { default: arePropsEqual } = await getModule(m => m?.default &&
-        m.default.toString().search(/if\(\w===\w\)return!0;var \w=Object\.keys\(\w\),\w=Object\.key/) !== -1)
+    const arePropsEqual = (e, t, n) => {
+        if (e === t) return true
+        const r = Object.keys(e), i = Object.keys(t)
+        if (r.length !== i.length) return false
+        for (let o = 0; o < r.length; o++) {
+            const a = r[o]
+            if (e[a] !== t[a] && (n === null || !n.includes(a))) return false
+        }
+        return true
+    }
 
     return class FolderGuilds extends Guilds {
         constructor(props) {
