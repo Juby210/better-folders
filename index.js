@@ -71,12 +71,13 @@ module.exports = class BetterFolders extends Plugin {
             })
         })
 
-        const { DefaultHomeButton } = await getModule(['DefaultHomeButton'])
-        inject('better-folders-homebtn', DefaultHomeButton.prototype, 'render', (_, res) => {
-            if (!this.settings.get('closeAllHomeButton') || !res?.props) return res
-            res.props.onClick = closeAllFolders
-            return res
-        })
+        // BROKEN 08.10.2021
+        // const { DefaultHomeButton } = await getModule(['DefaultHomeButton'])
+        // inject('better-folders-homebtn', DefaultHomeButton.prototype, 'render', (_, res) => {
+        //     if (!this.settings.get('closeAllHomeButton') || !res?.props) return res
+        //     res.props.onClick = closeAllFolders
+        //     return res
+        // })
     }
 
     async pluginWillUnload() {
@@ -142,11 +143,9 @@ module.exports = class BetterFolders extends Plugin {
         const GuildFolderStore = await getModule(['getSortedGuilds'])
         const { int2hex } = await getModule(['int2hex', 'isValidHex'])
 
-        const GuildFolder = (await getModule(m => m?.type?.render &&
-            (m.type.__powercordOriginal_render || m.type.render).toString().indexOf('.Messages.SERVER_FOLDER_PLACEHOLDER') !== -1
-        )).type
+        const { GuildFolderComponent: { type: GuildFolder } } = await getModule(['GuildFolderComponent'])
         inject('better-folders-folder', GuildFolder, 'render', (args, res) => {
-            if (sidebar) {
+            if (sidebar && !args[0].__bf_folder) {
                 const folder = findInReactTree(res, e => e?.props && !(e.props.id || '').indexOf('folder-items-'))
                 if (folder) folder.props.expanded = false
             }
@@ -173,9 +172,6 @@ module.exports = class BetterFolders extends Plugin {
             }
             return res
         })
-        // let other plugins find module easier
-        const oString = GuildFolder.__powercordOriginal_render.toString()
-        GuildFolder.render.toString = () => oString
 
         this.forceUpdateFolder()
     }

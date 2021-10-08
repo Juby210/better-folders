@@ -60,3 +60,10 @@
 .BF-icon .folder-21wGz3 {
   background: none;
 }
+
+.BF-folderSidebar .wrapper-3Njo_c > div:first-of-type {
+  display: none;
+}
+.BF-folderSidebar .expandedFolderBackground-1cujaW {
+  background-color: transparent;
+}

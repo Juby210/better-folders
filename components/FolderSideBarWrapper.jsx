@@ -47,11 +47,7 @@ module.exports = async (FolderGuilds, warn, getSetting) => {
             expandedFolders.forEach(folderId => {
                 const guildFolder = GuildFolderStore.getGuildFolderById(folderId)
                 if (!guildFolder) return warn(`Could not find expanded folder ${folderId}`)
-                guildFolder.guildIds.forEach(guildId =>
-                    guildFolders.push({
-                        guildIds: [ guildId ]
-                    })
-                )
+                guildFolders.push(guildFolder)
             })
             const Sidebar = <FolderGuilds guildFolders={guildFolders} isFolder={true} className={classes.guilds} lurkingGuildIds={[]} />
             const visible = !!ExpandedFolderStore.getExpandedFolders().size
