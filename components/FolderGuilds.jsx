@@ -3,7 +3,7 @@
  * Licensed under the Open Software License version 3.0
  */
 
-const { React, getModule, constants } = require('powercord/webpack')
+const { React, getModule, constants, i18n: { Messages } } = require('powercord/webpack')
 const { findInReactTree } = require('powercord/util')
 
 module.exports = async Guilds => {
@@ -14,7 +14,7 @@ module.exports = async Guilds => {
     return props => {
         if (!props.guildFolders) return null
         const ret = Guilds(props)
-        const serversList = findInReactTree(ret, e => e && e['aria-label'] === 'Servers')
+        const serversList = findInReactTree(ret, e => e && e['aria-label'] === Messages.SERVERS)
         // console.log(props, ret)
         if (serversList) {
             const servers = serversList.children
