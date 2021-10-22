@@ -7,7 +7,6 @@ const { React, getModule, getModuleByDisplayName } = require('powercord/webpack'
 
 module.exports = async IconStore => {
     const classes = await getModule(['folder', 'folderIconWrapper'])
-    const joinClassNames = await getModule(m => m?.default?.default)
     const Clickable = await getModuleByDisplayName('Clickable')
     const RemoveButton = await getModuleByDisplayName('RemoveButton')
 
@@ -36,10 +35,7 @@ module.exports = async IconStore => {
         }
         render() {
             return <Clickable
-                className={joinClassNames('BF-icon', classes.folder, {
-                    'BF-icon-selected': this.props.isSelected,
-                    'BF-icon-hovered': this.state.hovered
-                })}
+                className={`BF-icon ${classes.folder} ${this.props.isSelected ? 'BF-icon-selected' : ''} ${this.state.hovered ? 'BF-icon-hovered' : ''}`}
                 onMouseEnter={this.onMouseEnter}
                 onMouseLeave={this.onMouseLeave}
                 onClick={this.onIconClicked}
