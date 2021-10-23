@@ -3,8 +3,10 @@
  * Licensed under the Open Software License version 3.0
  */
 
-const { React, getModule, constants, i18n: { Messages } } = require('powercord/webpack')
+const { React, getModule } = require('powercord/webpack')
 const { findInReactTree } = require('powercord/util')
+
+const { Messages } = getModule(m => m.Messages && m.Messages['en-US'], false) || {}
 
 module.exports = async Guilds => {
     const { guildSeparator, listItem } = await getModule(['unavailableBadge', 'listItem'])

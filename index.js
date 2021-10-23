@@ -4,11 +4,12 @@
  */
 
 const { Plugin } = require('powercord/entities')
-const { getModule, getModuleByDisplayName, i18n: { Messages }, React, FluxDispatcher } = require('powercord/webpack')
+const { getModule, getModuleByDisplayName, React, FluxDispatcher } = require('powercord/webpack')
 const { SwitchItem } = require('powercord/components/settings')
 const { findInTree, findInReactTree, forceUpdateElement, getReactInstance, getOwnerInstance, sleep, waitFor } = require('powercord/util')
 const { inject, uninject } = require('powercord/injector')
 
+const { Messages } = getModule(m => m.Messages && m.Messages['en-US'], false) || {}
 const Settings = require('./components/Settings')
 
 module.exports = class BetterFolders extends Plugin {
