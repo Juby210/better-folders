@@ -12,6 +12,7 @@ module.exports = async (FolderGuilds, warn, getSetting) => {
     }
     const AnimateModule = await getModule(['useTransition'])
     const FullscreenStore = await getModule(['isFullscreenInContext'])
+    const GuildFolderStore = await getModule(['getSortedGuilds'])
     const ExpandedFolderStore = await getModule(['getExpandedFolders'])
 
     class FolderSideBarWrapper extends React.PureComponent {
@@ -41,9 +42,16 @@ module.exports = async (FolderGuilds, warn, getSetting) => {
             const guilds = document.querySelector(`.${classes.guilds.split(' ')[0]}`)
             if (!guilds) return null
             const SidebarWidth = guilds.getBoundingClientRect().width /* hack */
-            const Sidebar = <FolderGuilds guildFolders={Array.from(this.props.expandedFolders)} className={classes.guilds} />
-            const visible = !!this.props.expandedFolders.size
-            if (!getSetting('sidebarAnim', true)) return visible ? <div className='BF-folderSidebar'>{Sidebar}</div> : null
+            const expandedFolders = ExpandedFolderStore.getExpandedFolders()
+            const guildFolders = []
+            expandedFolders.forEach(folderId => {
+                const guildFolder = GuildFolderStore.getGuildFolderById(folderId)
+                if (!guildFolder) return warn(`Could not find expanded folder ${folderId}`)
+                guildFolders.push(guildFolder)
+            })
+            const Sidebar = <FolderGuilds guildFolders={guildFolders} isFolder={true} className={classes.guilds} lurkingGuildIds={[]} />
+            const visible = !!ExpandedFolderStore.getExpandedFolders().size
+            if (!getSetting('sidebarAnim', true)) return visible ? <div className={'BF-folderSidebar'}>{Sidebar}</div> : null
             return <AnimateModule.Transition
                 items={ visible }
                 from={{ width: 0 }}
@@ -56,8 +64,8 @@ module.exports = async (FolderGuilds, warn, getSetting) => {
         }
     }
 
-    return Flux.connectStores([ FullscreenStore, ExpandedFolderStore ], () => ({
+    return Flux.connectStores([ FullscreenStore, GuildFolderStore ], () => ({
         fullscreen: FullscreenStore.isFullscreenInContext(),
-        expandedFolders: ExpandedFolderStore.getExpandedFolders()
+        guildFolders: GuildFolderStore.guildFolders
     }))(FolderSideBarWrapper)
 }
