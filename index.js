@@ -85,8 +85,10 @@ module.exports = class BetterFolders extends Plugin {
         powercord.api.settings.unregisterSettings(this.entityID)
         uninject('better-folders-appview')
         uninject('better-folders-folder')
+        uninject('better-folders-folderHeader')
         uninject('better-folders-foldersettings')
         uninject('better-folders-homebtn')
+        uninject('better-folders-guildsTree')
 
         if (this.onSwitch) FluxDispatcher.unsubscribe('CHANNEL_SELECT', this.onSwitch)
         if (this.onToggleFolder) FluxDispatcher.unsubscribe('TOGGLE_GUILD_FOLDER_EXPAND', this.onToggleFolder)
@@ -104,6 +106,7 @@ module.exports = class BetterFolders extends Plugin {
         if (repatch) {
             uninject('better-folders-appview')
             uninject('better-folders-folder')
+            uninject('better-folders-folderHeader')
         }
         if (this.settings.get('folderSidebar', true)) this.patchAppView()
         else {
@@ -119,11 +122,9 @@ module.exports = class BetterFolders extends Plugin {
                 await sleep(1)
         }
 
-        const Guilds = findInTree(
-            getReactInstance(await waitFor(`.${this.classes.guilds.split(' ')[0]}`)),
-            e => e?.type?.displayName === 'Guilds',
-            { walkable: ['return'] }
-        ).type
+        const Guilds = this.extractFromFnComponent(
+            getModule(m => m && m.type && m.type.toString().indexOf('("guildsnav")') !== -1, false).type
+        ).props.children.type
         const FolderGuilds = await (require('./components/FolderGuilds'))(Guilds)
         const FolderSideBarWrapper = await (require('./components/FolderSideBarWrapper'))(
             FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
@@ -144,35 +145,38 @@ module.exports = class BetterFolders extends Plugin {
         const GuildFolderStore = await getModule(['getSortedGuilds'])
         const { int2hex } = await getModule(['int2hex', 'isValidHex'])
 
-        const { GuildFolderComponent: { type: GuildFolder } } = await getModule(['GuildFolderComponent'])
-        inject('better-folders-folder', GuildFolder, 'render', (args, res) => {
-            if (sidebar && !args[0].__bf_folder) {
-                const folder = findInReactTree(res, e => e?.props && !(e.props.id || '').indexOf('folder-items-'))
-                if (folder) folder.props.expanded = false
-            }
-
-            const sets = this.settings.get('folderSettings', {})[args[0].folderId]
-            if ((sets?.icon && sets.icon !== '0' && args[0].expanded) || sets?.closedIcon) {
-                const iconParent = findInReactTree(res, e => e?.children?.type?.displayName === 'FolderIcon')
-                if (iconParent) {
-                    const icon = this.IconStore.icons[sets?.icon || 0]
-                    if (icon) iconParent.children = React.createElement('div', {
-                        className: `${this.classes.folderIconWrapper} ${this.classes.expandedFolderIconWrapper}`,
-                        style: {
-                            '--bf-primary-color': int2hex(args[0].folderColor),
-                            '--bf-secondary-color': sets?.secondaryColor || '#ffffff'
-                        }
-                    }, Array.isArray(icon) ? icon[args[0].expanded ? 1 : 0] : icon)
-                }
-            }
-
-            if (this.settings.get('folderNameIsNumber') && (!args[0].folderName || !args[0].folderName.length)) {
-                const idx = GuildFolderStore.guildFolders.filter(f => f.folderId).findIndex(m => m.folderId === args[0].folderId) + 1
+        const FolderItem = await getModule(m => m.default && m.default.displayName === 'FolderItem')
+        inject('better-folders-folder', FolderItem, 'default', (args, res) => {
+            if (sidebar && !args[0].__bf_folder) res.props.children[2] = null
+            const sets = this.settings.get('folderSettings', {})[args[0].folderNode.id]
+            if (this.settings.get('folderNameIsNumber') && (!args[0].folderNode.name || !args[0].folderNode.name.length)) {
+                const idx = GuildFolderStore.guildFolders.filter(f => f.folderId).findIndex(m => m.folderId === args[0].folderNode.id) + 1
                 const tooltipProps = findInReactTree(res, e => e?.text)
                 if (tooltipProps) tooltipProps.text = `${Messages.SERVER_FOLDER_PLACEHOLDER} #${idx}`
             }
             return res
         })
+        FolderItem.default.displayName = 'FolderItem'
+
+        const FolderHeader = await getModule(m => m.default && m.default.displayName === 'FolderHeader')
+        inject('better-folders-folderHeader', FolderHeader, 'default', (args, res) => {
+            const sets = this.settings.get('folderSettings', {})[args[0].folderNode.id]
+            if ((sets?.icon && sets.icon !== '0' && args[0].expanded) || sets?.closedIcon) {
+                const iconParent = findInReactTree(res, e => e?.children?.type?.displayName === 'FolderIconContent')
+                if (iconParent) {
+                    const icon = this.IconStore.icons[sets?.icon || 0]
+                    if (icon) iconParent.children = React.createElement('div', {
+                        className: `${this.classes.folderIconWrapper} ${this.classes.expandedFolderIconWrapper}`,
+                        style: {
+                            '--bf-primary-color': int2hex(args[0].folderNode.color),
+                            '--bf-secondary-color': sets?.secondaryColor || '#ffffff'
+                        }
+                    }, Array.isArray(icon) ? icon[args[0].expanded ? 1 : 0] : icon)
+                }
+            }
+            return res
+        })
+        FolderHeader.default.displayName = 'FolderHeader'
 
         this.forceUpdateFolder()
     }
@@ -278,5 +282,38 @@ module.exports = class BetterFolders extends Plugin {
         if (!sets[id]) sets[id] = {}
         Object.assign(sets[id], newSets)
         this.settings.set('folderSettings', sets)
+    }
+
+    extractFromFnComponent(component) {
+        const reactDispatcher = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher.current
+        const ogUseMemo = reactDispatcher.useMemo
+        const ogUseState = reactDispatcher.useState
+        const ogUseEffect = reactDispatcher.useEffect
+        const ogUseLayoutEffect = reactDispatcher.useLayoutEffect
+        const ogUseRef = reactDispatcher.useRef
+        const ogUseCallback = reactDispatcher.useCallback
+
+        reactDispatcher.useMemo = f => f()
+        reactDispatcher.useState = v => [ v, () => void 0 ]
+        reactDispatcher.useEffect = () => null
+        reactDispatcher.useLayoutEffect = () => null
+        reactDispatcher.useRef = () => ({})
+        reactDispatcher.useCallback = c => c
+
+        let ret
+        try {
+            ret = component()
+        } catch (e) {
+            this.error(e)
+        }
+
+        reactDispatcher.useMemo = ogUseMemo
+        reactDispatcher.useState = ogUseState
+        reactDispatcher.useEffect = ogUseEffect
+        reactDispatcher.useLayoutEffect = ogUseLayoutEffect
+        reactDispatcher.useRef = ogUseRef
+        reactDispatcher.useCallback = ogUseCallback
+
+        return ret
     }
 }
