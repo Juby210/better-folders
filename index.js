@@ -72,13 +72,20 @@ module.exports = class BetterFolders extends Plugin {
             })
         })
 
-        // BROKEN 08.10.2021
-        // const { DefaultHomeButton } = await getModule(['DefaultHomeButton'])
-        // inject('better-folders-homebtn', DefaultHomeButton.prototype, 'render', (_, res) => {
-        //     if (!this.settings.get('closeAllHomeButton') || !res?.props) return res
-        //     res.props.onClick = closeAllFolders
-        //     return res
-        // })
+        const PatchedHomeButton = props => {
+            if (!props) return null
+            const ret = props.__bf_type(props)
+            ret.props.onClick = closeAllFolders
+            return ret
+        }
+
+        const HomeButton = await getModule(['HomeButton'])
+        inject('better-folders-homebtn', HomeButton, 'HomeButton', (_, res) => {
+            if (!this.settings.get('closeAllHomeButton') || !res?.props) return res
+            res.props.__bf_type = res.type
+            res.type = PatchedHomeButton
+            return res
+        })
     }
 
     async pluginWillUnload() {
