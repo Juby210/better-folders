@@ -38,7 +38,8 @@
   position: relative;
 }
 
-.BF-icon > .folderIconWrapper-226oVY {
+.BF-icon > .folderIconWrapper-226oVY,
+.BF-icon > .folderIconWrapper-1oRIZr {
   justify-content: center;
   align-items: center;
   display: flex;
@@ -61,7 +62,8 @@
   background: none;
 }
 
-.BF-folderSidebar .wrapper-shyHJt > div:first-of-type {
+.BF-folderSidebar .wrapper-shyHJt > div:first-of-type,
+.BF-folderSidebar .wrapper-38slSD > div:first-of-type {
   display: none;
 }
 .BF-folderSidebar [class*=expandedFolderBackground-] {
