@@ -6,7 +6,7 @@
 const { Plugin } = require('powercord/entities')
 const { getModule, getModuleByDisplayName, React, FluxDispatcher } = require('powercord/webpack')
 const { SwitchItem } = require('powercord/components/settings')
-const { findInTree, findInReactTree, forceUpdateElement, getReactInstance, getOwnerInstance, sleep, waitFor } = require('powercord/util')
+const { findInReactTree, forceUpdateElement, getOwnerInstance, sleep, waitFor, wrapInHooks } = require('powercord/util')
 const { inject, uninject } = require('powercord/injector')
 
 const { Messages } = getModule(m => m.Messages && m.Messages['en-US'], false) || {}
@@ -129,9 +129,13 @@ module.exports = class BetterFolders extends Plugin {
                 await sleep(1)
         }
 
-        const Guilds = this.extractFromFnComponent(
-            getModule(m => m && m.type && m.type.toString().indexOf('("guildsnav")') !== -1, false).type
-        ).props.children.type
+        const Guilds = wrapInHooks(component => {
+            try {
+                return component().props.children.type
+            } catch (e) {
+                this.error(e)
+            }
+        })(getModule(m => m && m.type && m.type.toString().indexOf('("guildsnav")') !== -1, false).type)
         const FolderGuilds = await (require('./components/FolderGuilds'))(Guilds)
         const FolderSideBarWrapper = await (require('./components/FolderSideBarWrapper'))(
             FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
@@ -289,38 +293,5 @@ module.exports = class BetterFolders extends Plugin {
         if (!sets[id]) sets[id] = {}
         Object.assign(sets[id], newSets)
         this.settings.set('folderSettings', sets)
-    }
-
-    extractFromFnComponent(component) {
-        const reactDispatcher = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher.current
-        const ogUseMemo = reactDispatcher.useMemo
-        const ogUseState = reactDispatcher.useState
-        const ogUseEffect = reactDispatcher.useEffect
-        const ogUseLayoutEffect = reactDispatcher.useLayoutEffect
-        const ogUseRef = reactDispatcher.useRef
-        const ogUseCallback = reactDispatcher.useCallback
-
-        reactDispatcher.useMemo = f => f()
-        reactDispatcher.useState = v => [ v, () => void 0 ]
-        reactDispatcher.useEffect = () => null
-        reactDispatcher.useLayoutEffect = () => null
-        reactDispatcher.useRef = () => ({})
-        reactDispatcher.useCallback = c => c
-
-        let ret
-        try {
-            ret = component()
-        } catch (e) {
-            this.error(e)
-        }
-
-        reactDispatcher.useMemo = ogUseMemo
-        reactDispatcher.useState = ogUseState
-        reactDispatcher.useEffect = ogUseEffect
-        reactDispatcher.useLayoutEffect = ogUseLayoutEffect
-        reactDispatcher.useRef = ogUseRef
-        reactDispatcher.useCallback = ogUseCallback
-
-        return ret
     }
 }
