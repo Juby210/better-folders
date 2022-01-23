@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021 Juby210 & Lighty
+ * Copyright (c) 2020-2022 Juby210 & Lighty
  * Licensed under the Open Software License version 3.0
  */
 
@@ -94,6 +94,7 @@ module.exports = class BetterFolders extends Plugin {
         uninject('better-folders-folder')
         uninject('better-folders-folderHeader')
         uninject('better-folders-foldersettings')
+        uninject('better-folders-lazy-modal')
         uninject('better-folders-homebtn')
         uninject('better-folders-guildsTree')
 
@@ -222,8 +223,7 @@ module.exports = class BetterFolders extends Plugin {
         const FormItem = await getModuleByDisplayName('FormItem')
 
         const _this = this
-        const GuildFolderSettingsModal = await getModuleByDisplayName('GuildFolderSettingsModal')
-        inject('better-folders-foldersettings', GuildFolderSettingsModal.prototype, 'render', function (_, res) {
+        this.lazyPatchFolderSettings(mdl => inject('better-folders-foldersettings', mdl.prototype, 'render', function (_, res) {
             const form = findInReactTree(res, e => e?.type === 'form' && Array.isArray(e.props?.children))
             if (!form) return res
 
@@ -285,7 +285,7 @@ module.exports = class BetterFolders extends Plugin {
             }
 
             return res
-        })
+        }))
     }
 
     saveFolderSettings(id, newSets) {
@@ -293,5 +293,32 @@ module.exports = class BetterFolders extends Plugin {
         if (!sets[id]) sets[id] = {}
         Object.assign(sets[id], newSets)
         this.settings.set('folderSettings', sets)
+    }
+
+    async lazyPatchFolderSettings(patch) {
+        const m = getModuleByDisplayName('GuildFolderSettingsModal', false)
+        if (m) patch(m)
+        else {
+            const { useModalsStore } = await getModule(['useModalsStore'])
+            inject('better-folders-lazy-modal', useModalsStore, 'setState', a => {
+                const og = a[0]
+                a[0] = (...args) => {
+                    const ret = og(...args)
+                    try {
+                        if (ret?.default?.length) {
+                            const el = ret.default[0]
+                            if (el && el.render && el.render.toString().indexOf(',folderColor:') !== -1) {
+                                uninject('better-folders-lazy-modal')
+                                patch(getModuleByDisplayName('GuildFolderSettingsModal', false))
+                            }
+                        }
+                    } catch (e) {
+                        this.error(e)
+                    }
+                    return ret
+                }
+                return a
+            }, true)
+        }
     }
 }
