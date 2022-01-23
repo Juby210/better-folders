@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021 Juby210 & Lighty
+ * Copyright (c) 2020-2022 Juby210 & Lighty
  * Licensed under the Open Software License version 3.0
  */
 
