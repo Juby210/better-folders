@@ -125,10 +125,16 @@ module.exports = class BetterFolders extends Plugin {
 
     async patchAppView() {
         const AppViewInstance = await this.getAppViewInstance()
-        if (powercord.pluginManager.isEnabled('pc-notices') && powercord.pluginManager.get('pc-notices')) {
-            while (!AppViewInstance.props.children.__powercordOriginal_type)
-                await sleep(1)
+        const AppView = findInReactTree(AppViewInstance, e => e?.type?.displayName === 'AppView')
+        if (!AppView) {
+            this.error('Couldn\'t find AppView in', AppViewInstance)
+            return
         }
+
+        // if (powercord.pluginManager.isEnabled('pc-notices') && powercord.pluginManager.get('pc-notices')) {
+        //     while (!AppViewInstance.props.children.__powercordOriginal_type)
+        //         await sleep(1)
+        // }
 
         const Guilds = wrapInHooks(component => {
             try {
@@ -141,13 +147,13 @@ module.exports = class BetterFolders extends Plugin {
         const FolderSideBarWrapper = await (require('./components/FolderSideBarWrapper'))(
             FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
 
-        inject('better-folders-appview', AppViewInstance.props.children, 'type', (_, res) => {
+        inject('better-folders-appview', AppView, 'type', (_, res) => {
             if (!Array.isArray(res?.props?.children)) return res
             res.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
             return res
         })
-        AppViewInstance.props.children.type.displayName = 'AppView'
-        AppViewInstance.props.children.key = Math.random()
+        AppView.type.displayName = 'AppView'
+        // AppViewInstance.props.children.key = Math.random()
 
         await this.patchFolder(true)
         AppViewInstance.forceUpdate()
