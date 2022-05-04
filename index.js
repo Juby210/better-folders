@@ -148,8 +148,9 @@ module.exports = class BetterFolders extends Plugin {
             FolderGuilds, this.warn.bind(this), this.settings.get.bind(this))
 
         inject('better-folders-appview', AppView, 'type', (_, res) => {
-            if (!Array.isArray(res?.props?.children?.props?.children)) return res
-            res.props.children.props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
+            const props = findInReactTree(res, e => e && e.className?.startsWith("container-") && Array.isArray(e.children))
+            if (!props) return res
+            props.children.splice(1, 0, React.createElement(FolderSideBarWrapper, {}))
             return res
         })
         AppView.type.displayName = 'AppView'
