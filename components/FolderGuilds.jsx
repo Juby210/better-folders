@@ -30,7 +30,7 @@ module.exports = async Guilds => {
         // console.log(props, ret)
         if (serversList) {
             const servers = serversList.children
-            ret.props.children.props.children[1].props.children = servers
+            ret.props.children[0].props.children[1].props.children = servers
             for (let i = 0; i < servers.length; i++) {
                 const folderProps = servers[i].props
                 // folderProps.index = getGuildFolderIdx(folderProps.guildIds[0])
